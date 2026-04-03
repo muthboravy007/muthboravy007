@@ -2,8 +2,6 @@
 
 ## Welcome to my GitHub page. I hope you find my repos useful.
 
-![GitHub Stats](https://github-readme-stats.vercel.app/api?username=muthboravy007&show_icons=true&count_private=true&theme=radical)
-
 🔬 **Nuclear Engineering PhD | Faculty @ ITC Cambodia**  
 ⚛️ Computational reactor physics, neutron transport, shielding analysis and ML for nuclear systems  
 🛠️ Tools: Python, Fortran, C++, MCNP, OpenMC, SCALE, CASMO/SIMULATE  
