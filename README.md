@@ -7,7 +7,7 @@ Computational reactor physics, neutron transport, shielding analysis and ML for 
 Tools: MCNP, OpenMC, SCALE, CASMO/SIMULATE  
 Programming: Python, Fortran, C++
 Currently building **ANGKOR** as an open-source deterministic reactor physics code  
-Reach me on [LinkedIn](https://linkedin.com/in/muthboravy) | [ORCID]([https://orcid.org/your-orcid](https://orcid.org/0000-0002-1890-0643))
+Reach me on [LinkedIn](https://linkedin.com/in/muthboravy) | [ORCID](https://orcid.org/0000-0002-1890-0643)
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
 ![Fortran](https://img.shields.io/badge/Fortran-734F96?style=flat&logo=fortran&logoColor=white)
