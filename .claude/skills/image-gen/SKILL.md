@@ -1,51 +1,65 @@
 ---
 name: image-gen
-description: Generate or edit images with OpenAI's GPT Image models (the engine behind ChatGPT image generation). Use when the user asks to create, draw, render, design or edit an image, logo, icon, illustration, mockup, poster, thumbnail, sticker or photo, or to change an existing image (inpainting with a mask, style changes, combining reference images). Saves PNG/JPEG/WebP files locally.
+description: Create or generate images for free, with no API key or credits needed. Use when the user asks to create, draw, generate, render or design an image, picture, photo, illustration, logo, icon, poster, banner, thumbnail, social post, sticker, wallpaper, mockup or diagram-style graphic, or to edit/restyle one. Uses a free AI image service (Pollinations/Flux) when reachable and otherwise draws the image offline as SVG/HTML rendered to PNG with local Chromium. Optional OpenAI GPT Image engine only if the user has OPENAI_API_KEY.
 ---
 
-# Image generation (GPT Image / ChatGPT engine)
+# Free image generation
 
-This skill calls the OpenAI Images API directly with `scripts/generate.py` (Python 3 standard library only, no `pip install`).
+Three engines, all driven from `scripts/`. Run commands from the repo root (paths below are relative to it).
 
-## Requirements
-- `OPENAI_API_KEY` must be set in the environment. Never ask the user to paste it into chat.
-- Network access to `api.openai.com`.
-- Optional: `OPENAI_IMAGE_MODEL` overrides the default model (`gpt-image-1`). For cheaper drafts use `gpt-image-1-mini`, and use a newer GPT Image model if the account has one.
+| Engine | Cost | Needs | Best for |
+|---|---|---|---|
+| **free-ai** (`free_ai.py`) | Free, no key | Network access to `image.pollinations.ai` | Photos, realistic scenes, painterly art, characters, landscapes |
+| **draw** (`render.cjs`) | Free, offline | Local Chromium + Playwright (preinstalled in Claude Code cloud) | Logos, icons, posters, banners, thumbnails, infographics, anything with exact text, flat/vector/geometric art |
+| **openai** (`openai_image.py`) | Paid | `OPENAI_API_KEY` | Only when the user has credits and asks for it |
 
-## Workflow
-1. **Turn the request into a strong prompt** (see "Prompt recipe" below). Keep the user's intent; add the missing details yourself instead of asking unless the subject itself is unclear.
-2. **Pick settings:**
-   - `--size`: `1024x1024` square, `1536x1024` landscape, `1024x1536` portrait, or `auto`.
-   - `--quality`: `low` for drafts and iterations, `medium` by default, `high` for finals or images with a lot of text.
-   - `--background transparent` with `--format png` or `webp` for logos, icons, stickers.
-   - `--n` for variations (1–10).
-3. **Run** from the repo root:
+## Choosing the engine
+1. Exact text, logos, icons, UI, charts, flat/vector/minimal styles → **draw** (AI models misspell text; drawing is precise).
+2. Photorealistic or painterly subjects → **free-ai**. If it exits with code 3 (service unreachable/blocked), tell the user in one line and switch to **draw**, producing the best illustrated version you can (layered gradients, shapes, filters).
+3. Use **openai** only if `OPENAI_API_KEY` is set and the user wants it.
+
+Don't ask the user which engine or size to use; pick sensible defaults and say what you chose.
+
+## Engine: free-ai
+```bash
+python3 .claude/skills/image-gen/scripts/free_ai.py \
+  --prompt "..." --size landscape --out images/fox.jpg [--n 3] [--seed 42] [--model flux]
+```
+- `--size`: `square` 1024², `landscape` 1344×768, `portrait` 768×1344, `wide` 1536×640, `story` 720×1280, or `WxH`.
+- `--n` gives variations with different seeds; `--seed` makes results reproducible (reuse the seed and tweak the prompt to refine).
+- Writes the image(s) plus a `.json` sidecar with prompt and seeds.
+- Optional `POLLINATIONS_TOKEN` env var for higher rate limits. On HTTP 429 it retries automatically.
+
+Prompt recipe (comma-separated art brief): **subject + action**, **setting/composition**, **style/medium**, **lighting/colour**, **quality cues** ("highly detailed, sharp focus"). Avoid asking it for text; add text afterwards with the draw engine (see "Combine").
+
+## Engine: draw (offline)
+1. Write an SVG (preferred) or a self-contained HTML file in the scratchpad or `images/src/`. Set `width`, `height` and `viewBox` on the `<svg>`.
+2. Render it:
    ```bash
-   python3 .claude/skills/image-gen/scripts/generate.py \
-     --prompt "..." --size 1536x1024 --quality medium --out images/hero.png
+   node .claude/skills/image-gen/scripts/render.cjs images/src/logo.svg images/logo.png [--width 1024 --height 1024] [--scale 2] [--transparent]
    ```
-   For an edit, pass one or more `--image` files (and optionally `--mask`, a PNG whose transparent area is what gets repainted):
-   ```bash
-   python3 .claude/skills/image-gen/scripts/generate.py \
-     --prompt "Replace the sky with a pink sunset" --image photo.png --mask sky_mask.png --out images/sunset.png
-   ```
-4. **Check the result:** open the saved file with the Read tool to look at it, compare with the request, and iterate with a revised prompt if anything is wrong (wrong text, extra fingers, wrong layout).
-5. **Report** the saved file paths, the final prompt used and the settings. The script also writes a `.json` sidecar with the prompt, revised prompt (when returned) and token usage.
+   `--transparent` keeps the background clear (PNG). `--scale 2` gives a sharper, double-resolution image. `.jpg` output also works.
 
-Use `--dry-run` to print the request without calling the API (no key needed).
+Drawing guidance, so results look designed rather than clip-art:
+- Start with a clear composition: one focal subject, a background layer, generous margins.
+- Use a palette of 3–5 harmonious colours; build depth with `linearGradient`/`radialGradient`, soft shadows (`feDropShadow`/`feGaussianBlur`) and overlapping translucent shapes.
+- Texture and atmosphere: `feTurbulence` noise for grain, clouds or paper; blurred blobs for glow; `pattern` for repeats.
+- Text: use system font stacks (`Inter, Helvetica, Arial, sans-serif`, `Georgia, serif`) or embed a Google Font in HTML only when network allows. Keep headline text large, high contrast, and inside safe margins.
+- HTML mode is handy for posters/social cards with CSS layout (flex/grid), CSS gradients, `backdrop-filter`, and emoji.
+- Common sizes: social post 1080×1080, story 1080×1920, YouTube thumbnail 1280×720, OG/banner 1200×630, icon 512×512, wallpaper 1920×1080.
 
-## Prompt recipe
-Write prompts as a short art brief, in this order:
-1. **Subject**: who or what, doing what. Be concrete ("a red fox curled asleep on a mossy log").
-2. **Setting / composition**: background, camera angle, framing, where things sit ("centered, low angle, shallow depth of field, empty space on the left for a headline").
-3. **Style / medium**: photo, 3D render, flat vector, watercolor, isometric, pixel art, film photo, etc. Describe the style in your own words rather than naming a living artist.
-4. **Lighting and colour**: "soft golden-hour light", "neon magenta and teal palette".
-5. **Text in the image**: put exact text in quotes and name the font feel and placement ("the words \"OPEN DAILY\" in bold white sans-serif at the top"). Use `--quality high` for text.
-6. **Constraints**: what must not appear ("no watermark, no extra text, plain white background").
+## Combine (AI photo + exact text)
+Generate the photo with free-ai, then make an HTML/SVG that uses it as a background `<image href="fox.jpg">` (relative path next to the HTML/SVG file) and overlay the text, and render with `render.cjs`.
 
-For edits, say what changes and what must stay the same ("Keep the person's face, pose and clothing identical; only change the background to a beach").
+## Editing an existing image
+- Restyle or retouch: put it in an SVG/HTML as `<image>` and apply CSS filters (`brightness`, `contrast`, `saturate`, `hue-rotate`, `blur`, `grayscale`, `sepia`), crops, frames, overlays and text, then render.
+- Simple pixel work (resize, crop, convert, add border) can be done with Python Pillow if installed.
 
-## Safety and limits
-- OpenAI's usage policy applies; the API will refuse some prompts. If it does, tell the user plainly and suggest a rephrase that keeps their goal.
-- Don't generate images that imitate a real person's likeness in a deceptive way, real brands' logos as if official, or copyrighted characters.
-- Every call costs money on the user's OpenAI account; prefer `--quality low` while iterating and confirm before large batches (`--n` above 4 or many calls).
+## Always finish by
+1. Opening the output with the Read tool to look at it; fix anything off (cropped text, low contrast, wrong size) and re-render.
+2. Telling the user the saved path(s), the engine used and, for free-ai, the seed so they can ask for tweaks.
+3. Keeping the source SVG/HTML so later edits are quick.
+
+## Limits
+- Don't make images impersonating real people, real brands' official logos, or copyrighted characters.
+- free-ai is a public community service: it can be slow, rate limited or down; don't send private or sensitive information in prompts.
