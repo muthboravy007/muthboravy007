@@ -2,7 +2,8 @@
 // Offline, free image engine: renders an .svg or .html file to PNG/JPEG/WebP-less PNG
 // with the local headless Chromium (Playwright). No network, no API key.
 //
-// Usage: node render.cjs <input.svg|input.html> <output.png|.jpg> [--width 1024] [--height 1024] [--scale 1] [--transparent]
+// Usage: node render.cjs <input.svg|input.html> <output.png|.jpg> [--width 1024] [--height 1024] [--scale 1] [--transparent] [--full]
+// --full: capture the whole page height (for tall HTML posters); --height is then ignored.
 const fs = require('fs');
 const path = require('path');
 let chromium;
@@ -15,6 +16,7 @@ const opt = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? Number
 const [input, output] = pos;
 if (!input || !output) { console.error('usage: node render.cjs <in.svg|in.html> <out.png|out.jpg> [--width W] [--height H] [--scale S] [--transparent]'); process.exit(2); }
 const transparent = args.includes('--transparent');
+const full = args.includes('--full');
 const src = fs.readFileSync(input, 'utf8');
 const isSvg = input.toLowerCase().endsWith('.svg');
 
@@ -37,6 +39,10 @@ const html = isSvg
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: opt('scale', 1) });
   await page.setContent(html, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
   await page.evaluate(() => document.fonts && document.fonts.ready);
+  if (full) {
+    height = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
+    await page.setViewportSize({ width, height });
+  }
   fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
   const jpeg = /\.jpe?g$/i.test(output);
   await page.screenshot({ path: output, type: jpeg ? 'jpeg' : 'png', quality: jpeg ? 92 : undefined,
