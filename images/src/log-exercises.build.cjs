@@ -14,7 +14,7 @@ const tex = (s) => s
   .replace(/\\\(([\s\S]+?)\\\)/g, (_, m) => katex.renderToString(m, { throwOnError: true }));
 
 // ---------- small function plots ----------
-function plot({ w = 640, h = 300, x0, x1, y0, y1, fns = [], pts = [], hl = [], vl = [], xl = 'x', yl = 'y', shade, ticks = {} }) {
+function plot({ w = 640, h = 300, x0, x1, y0, y1, fns = [], pts = [], hl = [], vl = [], xl = 'x', yl = 'y', shade, ticks = {}, fx = v => v, fy = v => v, yTickLeft = false }) {
   const pad = { l: 46, r: 22, t: 22, b: 40 };
   const X = (x) => pad.l + (x - x0) / (x1 - x0) * (w - pad.l - pad.r);
   const Y = (y) => h - pad.b - (y - y0) / (y1 - y0) * (h - pad.t - pad.b);
@@ -25,9 +25,9 @@ function plot({ w = 640, h = 300, x0, x1, y0, y1, fns = [], pts = [], hl = [], v
     `<text x="${(X(shade[0]) + X(shade[1])) / 2}" y="${pad.t + 14}" text-anchor="middle" class="pc">${shade[2]}</text>`;
   // grid
   for (const gx of ticks.x || []) s += `<line x1="${X(gx)}" y1="${pad.t - 6}" x2="${X(gx)}" y2="${h - pad.b}" stroke="#000" opacity=".06"/>` +
-    `<text x="${X(gx)}" y="${Y(ay) + 24}" text-anchor="middle" class="pt">${gx}</text>`;
+    `<text x="${X(gx)}" y="${Y(ay) + 24}" text-anchor="middle" class="pt">${fx(gx)}</text>`;
   for (const gy of ticks.y || []) s += `<line x1="${pad.l}" y1="${Y(gy)}" x2="${w - pad.r}" y2="${Y(gy)}" stroke="#000" opacity=".06"/>` +
-    `<text x="${X(ax) - 8}" y="${Y(gy) + 6}" text-anchor="end" class="pt">${gy}</text>`;
+    `<text x="${yTickLeft ? pad.l - 4 : X(ax) - 8}" y="${Y(gy) + 6}" text-anchor="end" class="pt">${fy(gy)}</text>`;
   s += `<line x1="${pad.l - 10}" y1="${Y(ay)}" x2="${w - 6}" y2="${Y(ay)}" stroke="#1d1a17" stroke-width="2" marker-end="url(#pa)"/>`;
   s += `<line x1="${X(ax)}" y1="${h - pad.b + 12}" x2="${X(ax)}" y2="6" stroke="#1d1a17" stroke-width="2" marker-end="url(#pa)"/>`;
   s += `<text x="${w - 14}" y="${Y(ay) - 10}" text-anchor="end" class="pl">${xl}</text><text x="${X(ax) + 10}" y="20" class="pl">${yl}</text>`;
@@ -91,6 +91,14 @@ const plot5 = plot({ x0: 0, x1: 10, y0: -2.2, y1: 0.6, xl: 'x', yl: 'y', ticks: 
 const plot6 = plot({ x0: -2.5, x1: 2.2, y0: -0.5, y1: 9, xl: 'x', yl: 'y', ticks: { x: [-2, -1, 1, 2], y: [6] },
   fns: [{ id: 61, f: x => Math.pow(2, x) * (Math.pow(2, x) + 1), c: C, label: 'y = 2<tspan dy="-10" font-size="17">x</tspan><tspan dy="10">(2</tspan><tspan dy="-10" font-size="17">x</tspan><tspan dy="10"> + 1)</tspan>', lx: -2.3, ly: 2.2 }],
   hl: [{ y: 6, c: T, label: 'y = 6' }], pts: [{ x: 1, y: 6, c: '#1d1a17', label: '(1, 6)', dx: -16, dy: -16, anchor: 'end' }] });
+
+const pow2 = v => { const m = { '-3': '⅛', '-2': '¼', '-1': '½' }; return m[v] ?? String(2 ** v); };
+const plot8 = plot({ w: 560, h: 470, yTickLeft: true, x0: -3.5, x1: 4.6, y0: -0.6, y1: 7.2, xl: 'x', yl: 'y', fx: pow2, fy: pow2,
+  ticks: { x: [-2, 1, 3], y: [1, 4, 6] },
+  fns: [{ id: 81, f: X => 4 - X, c: T, label: 'xy = 16', lx: 1.1, ly: 3.7 },
+        { id: 82, f: X => X / 3, c: C, label: 'x = y³', lx: 4.55, ly: 2.1, anchor: 'end' },
+        { id: 83, f: X => -3 * X, c: C, dash: '10 7', label: 'x = y<tspan dy="-10" font-size="17">−1/3</tspan>', lx: -1.85, ly: 4.6, anchor: 'end' }],
+  pts: [{ x: 3, y: 1, c: '#1d1a17', label: '(8, 2)', dx: 0, dy: -22, anchor: 'middle' }, { x: -2, y: 6, c: '#1d1a17', label: '(¼, 64)', dx: 16, dy: 2 }] });
 
 const plot7 = plot({ w: 560, h: 420, x0: -3, x1: 3.2, y0: -20, y1: 15, xl: 'u', yl: 'g(u) = 4u² − u − 18', ticks: { x: [1, 2], y: [10] },
   shade: [-3, 0, 'u ≤ 0: impossible'],
@@ -172,16 +180,36 @@ const cards = [
     result: String.raw`\(x=\dfrac{1}{100}\)`,
     check: String.raw`\(t=-2:\ 4\cdot4^{-2}-6^{-2}-18\cdot9^{-2}=\tfrac14-\tfrac1{36}-\tfrac{18}{81}=\tfrac{81-9-72}{324}=0\).`,
     fig: plot7, cap: 'Only the positive root u = 9/4 is allowed, because u = (2/3)<sup>t</sup> > 0.' }),
+  card({ n: 8, stars: 3, tone: 'teal', tag: 'System of equations', wide: true,
+    statement: String.raw`Solve the system \(\ \log_y x-\log_x y=\dfrac83,\quad xy=16.\)`,
+    steps: [
+      ['domain', String.raw`\(x,y>0,\ x\neq1,\ y\neq1\).`],
+      [String.raw`\(\log_x y=\frac{1}{\log_y x}\) (both equal \(\frac{\ln y}{\ln x}\) and its inverse); put \(u=\log_y x\)`, String.raw`\(u-\dfrac1u=\dfrac83\iff3u^2-8u-3=0\iff(3u+1)(u-3)=0\).`],
+      [String.raw`case \(u=3\): \(\log_y x=3\iff x=y^3\)`, String.raw`\(xy=y^4=16,\ y>0\): \(\ y=2,\ x=8\).`],
+      [String.raw`case \(u=-\frac13\): \(x=y^{-1/3}\)`, String.raw`\(xy=y^{2/3}=16\iff y=16^{3/2}=64,\ \ x=64^{-1/3}=\tfrac14\).`],
+    ],
+    why: String.raw`The two logs are reciprocals, so one substitution \(u=\log_y x\) turns the first equation into a quadratic. Each root \(u\) gives a relation between \(x\) and \(y\); then \(xy=16\) fixes the values.`,
+    result: String.raw`\((x,y)=(8,2)\ \text{ or }\ (x,y)=\left(\tfrac14,64\right)\)`,
+    check: String.raw`\((8,2)\): \(\log_2 8-\log_8 2=3-\tfrac13=\tfrac83\);&nbsp; \(\left(\tfrac14,64\right)\): \(\log_{64}\tfrac14-\log_{1/4}64=-\tfrac13-(-3)=\tfrac83\).`,
+    fig: plot8, cap: 'Log scale on both axes: xy = 16 becomes a straight line and meets x = y³ at (8, 2) and x = y<sup>−1/3</sup> at (¼, 64).' }),
 ];
+const pick = (process.argv[3] || '3,4,5,6,7').split(',').map(Number);
+const chosen = cards.filter(h => pick.some(n => h.includes(`<h2>Exercise ${n}</h2>`)));
 
 const rules = [
-  [String.raw`\(\log_b b^r = r\)`, 'Def. 9'],
-  [String.raw`\(\log(xy)=\log x+\log y\)`, 'Th. 1.1'],
-  [String.raw`\(a^{\log_b c}=c^{\log_b a}\)`, 'swap identity'],
-  [String.raw`\(\sqrt{u^2}=|u|\)`, 'square roots'],
-  [String.raw`\(t=\log_{10}x,\ u=a^t>0\)`, 'substitution'],
-];
-const answers = [['3', String.raw`4\log_2x=6`], ['4', 'x=9'], ['5', 'x=4'], ['6', 'x=1'], ['7', String.raw`x=\tfrac1{100}`]];
+  [String.raw`\(\log_b b^r = r\)`, 'Def. 9', [3, 5]],
+  [String.raw`\(\log(xy)=\log x+\log y\)`, 'Th. 1.1', [6]],
+  [String.raw`\(a^{\log_b c}=c^{\log_b a}\)`, 'swap identity', [4]],
+  [String.raw`\(\sqrt{u^2}=|u|\)`, 'square roots', [3]],
+  [String.raw`\(t=\log_{10}x,\ u=a^t>0\)`, 'substitution', [7]],
+  [String.raw`\(\log_x y=\dfrac{1}{\log_y x}\)`, 'reciprocal logs', [8]],
+  [String.raw`\(\log_y x=k\iff x=y^k\)`, 'definition of log', [8]],
+  [String.raw`\(u-\tfrac1u=c\ \Rightarrow\ \text{quadratic in }u\)`, 'substitution', [8]],
+].filter(r => !r[2] || r[2].some(n => pick.includes(n)));
+const answers = [['3', String.raw`4\log_2x=6`], ['4', 'x=9'], ['5', 'x=4'], ['6', 'x=1'], ['7', String.raw`x=\tfrac1{100}`],
+  ['8', String.raw`(8,2)\ \text{or}\ \left(\tfrac14,64\right)`]].filter(a => pick.includes(+a[0]));
+const exLabel = pick.length > 1 ? `Exercises ${Math.min(...pick)}–${Math.max(...pick)}` : `Exercise ${pick[0]}`;
+const solLabel = pick.length > 1 ? 'step-by-step solutions' : 'a step-by-step solution';
 
 // ---------- page ----------
 const kdir = path.dirname(require.resolve('katex/package.json'));
@@ -231,7 +259,7 @@ figure{margin-top:auto;padding-top:20px;text-align:center}
 .wide figure{margin-top:46px;padding-top:0;flex:0 0 560px}
 figure svg{display:block;margin:0 auto;background:rgba(255,255,255,.55);border-radius:14px}
 figcaption{font-size:20px;color:#5f5952;margin-top:10px;font-style:italic}
-.pt{font-family:'Liberation Serif',serif;font-size:20px;fill:#4a453f}
+.pt{font-family:'Liberation Serif',serif;font-size:20px;fill:#4a453f;paint-order:stroke;stroke:#fbf8f5;stroke-width:5px}
 .pl{font-family:'Liberation Serif',serif;font-style:italic;font-size:24px;fill:var(--ink);paint-order:stroke;stroke:#fbf8f5;stroke-width:6px;stroke-linejoin:round}
 .pc{font-family:Inter,sans-serif;font-size:18px;fill:#6b645c}
 .pw{font-family:'Liberation Serif',serif;font-size:19px;fill:#fff;font-weight:700}
@@ -250,12 +278,12 @@ figcaption{font-size:20px;color:#5f5952;margin-top:10px;font-style:italic}
 .author:before,.author:after{content:"";display:inline-block;width:220px;height:3px;background:#000;vertical-align:middle;margin:0 28px}
 </style></head><body><div class="wrap">
 <h1>Logarithms &amp; Exponential Equations</h1>
-<div class="sub"><b>Exercises 3–7</b> with step-by-step solutions: <b>simplify</b>, <b>change the base</b>, <b>substitute</b>, then <b>check</b>.</div>
+<div class="sub"><b>${exLabel}</b> with ${solLabel}: <b>simplify</b>, <b>change the base</b>, <b>substitute</b>, then <b>check</b>.</div>
 <div class="center"><span class="chip">CHAPTER 7 · SOLUTIONS OF THE LECTURE-NOTE EXERCISES</span></div>
-<div class="grid">${cards.join('')}</div>
+<div class="grid">${chosen.join('')}</div>
 <div class="bottom">
   <div class="rulebox"><h2>Key rules used</h2><div class="rules">${rules.map(r => `<div class="rchip">${r[0]}<span class="rl">${r[1]}</span></div>`).join('')}</div></div>
-  <div class="ans"><h2>Answers at a glance</h2>${answers.map(a => `<div class="arow"><b>${a[0]}</b>\\(${a[1]}\\)</div>`).join('')}</div>
+  <div class="ans"><h2>${pick.length > 1 ? 'Answers at a glance' : 'Answer'}</h2>${answers.map(a => `<div class="arow"><b>${a[0]}</b>\\(${a[1]}\\)</div>`).join('')}</div>
 </div>
 <div class="author">Muth Boravy</div>
 </div></body></html>`;
