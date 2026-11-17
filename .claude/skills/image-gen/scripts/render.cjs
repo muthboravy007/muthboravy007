@@ -39,6 +39,8 @@ const html = isSvg
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: opt('scale', 1) });
   await page.setContent(html, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
   await page.evaluate(() => document.fonts && document.fonts.ready);
+  // optional page hook: lets a page fit/measure itself once fonts are loaded
+  await page.evaluate(() => (typeof window.__fit === 'function' ? window.__fit() : null));
   if (full) {
     height = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
     await page.setViewportSize({ width, height });

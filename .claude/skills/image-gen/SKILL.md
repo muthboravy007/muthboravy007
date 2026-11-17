@@ -38,7 +38,7 @@ Prompt recipe (comma-separated art brief): **subject + action**, **setting/compo
    ```bash
    node .claude/skills/image-gen/scripts/render.cjs images/src/logo.svg images/logo.png [--width 1024 --height 1024] [--scale 2] [--transparent]
    ```
-   `--transparent` keeps the background clear (PNG). `--full` captures the whole height of a tall HTML page. `--scale 2` gives a sharper, double-resolution image. `.jpg` output also works.
+   `--transparent` keeps the background clear (PNG). `--full` captures the whole height of a tall HTML page. If the page defines `window.__fit()`, it is called after fonts load (use it to shrink wide formulas to fit). `--scale 2` gives a sharper, double-resolution image. `.jpg` output also works.
 
 Drawing guidance, so results look designed rather than clip-art:
 - Start with a clear composition: one focal subject, a background layer, generous margins.
