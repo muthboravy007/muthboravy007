@@ -65,7 +65,8 @@ node .claude/skills/image-gen/scripts/handwrite.cjs --sample --out images/font-s
 - **Realism**: each word gets a small random tilt, baseline drift, size change and ink-pressure variation; `--jitter 0` is neat, `2` is messy. `--seed` changes the "handwriting take" while staying reproducible.
 - **Several fonts / inks in one document**: put `@font kalam`, `@ink red` or `@size 1.2` on their own line; they apply to the lines below.
 - **Formatting**: `# Heading` / `## Sub` (underlined), `- bullet`, `1. numbered`, blank line = empty ruled line, `**bold**`, `~~crossed out~~`, `==highlighter==`.
-- **Maths**: `\( … \)` inline and `\[ … \]` display are typeset with KaTeX when `--katex <dir containing katex>` is given (or KaTeX is installed); otherwise they are written as plain text. KaTeX is printed math in ink colour, not handwriting, so for a fully handwritten look write simple maths as text (`x² + 2x = 1`, `½`, `√2`).
+- **Handwritten maths** (stays in the handwriting font): `\frac{1}{4}` → stacked fraction, `A^{-1}`, `x^2`, `a_{n}`, `a_n` → super/subscripts. Use this for a fully handwritten look.
+- **Printed maths**: `\( … \)` inline and `\[ … \]` display are typeset with KaTeX when `--katex <dir containing katex>` is given (or KaTeX is installed); otherwise they are written as plain text. KaTeX is printed math in ink colour, not handwriting, so for a fully handwritten look write simple maths as text (`x² + 2x = 1`, `½`, `√2`).
 - `--texture` adds a subtle paper grain (looks more like a photo of paper, but PNGs get ~4× larger).
 - `--pdf` also writes a real multi-page A4 PDF (`notes.pdf`), ready to print. `--scale 2` (default) gives ~190 dpi PNGs; use `--scale 3` for print-quality images.
 - Header (every page) and title (first page) sit above the first line; page numbers `1 / 3` are added bottom-right (`--no-numbers` to hide).

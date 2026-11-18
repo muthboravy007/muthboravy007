@@ -102,7 +102,11 @@ const inline = (s) => {
   s = esc(s)
     .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
     .replace(/~~(.+?)~~/g, '<s>$1</s>')
-    .replace(/==(.+?)==/g, '<mark>$1</mark>');
+    .replace(/==(.+?)==/g, '<mark>$1</mark>')
+    // handwritten maths markup (stays in the handwriting font): \frac{a}{b}, x^{2}, x^2, a_{n}, a_n
+    .replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, '<span class="fr"><span class="nu">$1</span><span class="de">$2</span></span>')
+    .replace(/\^\{([^{}]*)\}/g, '<sup>$1</sup>').replace(/\^([0-9A-Za-z+\-])/g, '<sup>$1</sup>')
+    .replace(/_\{([^{}]*)\}/g, '<sub>$1</sub>').replace(/_([0-9A-Za-z])/g, '<sub>$1</sub>');
   // wrap words for per-word wobble (never inside tags or math placeholders)
   s = s.replace(/(<[^>]+>)|(\u0000\d+\u0000)|([^\s<\u0000]+)/g, (m, tag, ph, word) => tag || ph || `<w>${word}</w>`);
   return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<w class="m">${parts[+i]}</w>`);
@@ -194,6 +198,12 @@ body{display:flex;flex-direction:column;align-items:center;gap:24px;padding:24px
 .blk.ol{padding-left:${Lh * 0.1}px}
 .blk b{text-shadow:.6px 0 0 currentColor,-.3px 0 0 currentColor}
 .blk s{text-decoration:none;background:linear-gradient(transparent 52%,currentColor 52%,currentColor 60%,transparent 60%)}
+.blk sup{font-size:.62em;vertical-align:.7em;line-height:0}
+.blk sub{font-size:.62em;vertical-align:-.25em;line-height:0}
+.blk .fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.05;font-size:.82em;margin:0 .12em;position:relative;top:var(--dy)}
+.blk .fr .nu{border-bottom:1.6px solid currentColor;padding:0 .2em .05em}
+.blk .fr .de{padding:.05em .2em 0}
+.blk .fr w{top:0}
 .blk mark{background:linear-gradient(transparent 30%,rgba(255,226,92,.75) 30%,rgba(255,226,92,.75) 88%,transparent 88%);color:inherit}
 .blk .katex{font-size:calc(var(--fs) * .8);color:inherit}
 .blk.math .katex{font-size:calc(var(--fs) * .85)}
@@ -242,10 +252,10 @@ window.__layout = () => {
       if (k) { let w = 0; for (const n of k.children) w += n.getBoundingClientRect().width;
         if (w > c.clientWidth) b.style.setProperty('--fs', (parseFloat(getComputedStyle(b).getPropertyValue('--fs')) * c.clientWidth / w * .97) + 'px'); }
       b.style.minHeight = Math.ceil(b.scrollHeight / Lh) * Lh + 'px';
-    } else if (kind === 'text' && b.querySelector('.katex')) {
+    } else if (kind === 'text' && b.querySelector('.katex, .fr')) {
       // tall inline math (fractions): give those lines 2+ ruled lines so nothing overlaps
-      let h = 0; b.querySelectorAll('.katex').forEach(k => { h = Math.max(h, k.getBoundingClientRect().height); });
-      if (h > Lh * .95) b.style.lineHeight = Math.ceil(h / Lh + .2) * Lh + 'px';
+      let h = 0; b.querySelectorAll('.katex, .fr').forEach(k => { h = Math.max(h, k.getBoundingClientRect().height); });
+      if (h > Lh * .95) b.style.lineHeight = Math.ceil(h / Lh + .1) * Lh + 'px';
     }
     if (!over(c)) continue;
     c.removeChild(b);
