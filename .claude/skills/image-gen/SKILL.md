@@ -1,19 +1,21 @@
 ---
 name: image-gen
-description: Create or generate images for free, with no API key or credits needed. Use when the user asks to create, draw, generate, render or design an image, picture, photo, illustration, logo, icon, poster, banner, thumbnail, social post, sticker, wallpaper, mockup or diagram-style graphic, or to edit/restyle one. Uses a free AI image service (Pollinations/Flux) when reachable and otherwise draws the image offline as SVG/HTML rendered to PNG with local Chromium. Optional OpenAI GPT Image engine only if the user has OPENAI_API_KEY.
+description: Create or generate images for free, with no API key or credits needed. Also writes text as realistic handwriting on A4 paper (ruled, grid, dotted or plain) in 12 handwriting fonts, splitting long text across A4 pages and columns, saved as PNG pages and PDF. Use when the user asks to create, draw, generate, render or design an image, picture, photo, illustration, logo, icon, poster, banner, thumbnail, social post, sticker, wallpaper, mockup or diagram-style graphic, or to edit/restyle one. Use it for handwritten notes, handwriting copies, worksheets or homework pages too. Uses a free AI image service (Pollinations/Flux) when reachable and otherwise draws the image offline as SVG/HTML rendered to PNG with local Chromium. Optional OpenAI GPT Image engine only if the user has OPENAI_API_KEY.
 ---
 
 # Free image generation
 
-Three engines, all driven from `scripts/`. Run commands from the repo root (paths below are relative to it).
+Four engines, all driven from `scripts/`. Run commands from the repo root (paths below are relative to it).
 
 | Engine | Cost | Needs | Best for |
 |---|---|---|---|
 | **free-ai** (`free_ai.py`) | Free, no key | Network access to `image.pollinations.ai` | Photos, realistic scenes, painterly art, characters, landscapes |
 | **draw** (`render.cjs`) | Free, offline | Local Chromium + Playwright (preinstalled in Claude Code cloud) | Logos, icons, posters, banners, thumbnails, infographics, anything with exact text, flat/vector/geometric art |
+| **handwrite** (`handwrite.cjs`) | Free, offline | Local Chromium + Playwright; fonts are bundled in `fonts/` | Handwritten copies of text/notes on A4 paper, split over pages and columns, PNG + PDF |
 | **openai** (`openai_image.py`) | Paid | `OPENAI_API_KEY` | Only when the user has credits and asks for it |
 
 ## Choosing the engine
+0. Handwritten copy / notes / homework page / "write this by hand" → **handwrite** (A4, splits into pages and columns).
 1. Exact text, logos, icons, UI, charts, flat/vector/minimal styles → **draw** (AI models misspell text; drawing is precise).
 2. Photorealistic or painterly subjects → **free-ai**. If it exits with code 3 (service unreachable/blocked), tell the user in one line and switch to **draw**, producing the best illustrated version you can (layered gradients, shapes, filters).
 3. Use **openai** only if `OPENAI_API_KEY` is set and the user wants it.
@@ -47,6 +49,26 @@ Drawing guidance, so results look designed rather than clip-art:
 - Text: use system font stacks (`Inter, Helvetica, Arial, sans-serif`, `Georgia, serif`) or embed a Google Font in HTML only when network allows. Keep headline text large, high contrast, and inside safe margins.
 - HTML mode is handy for posters/social cards with CSS layout (flex/grid), CSS gradients, `backdrop-filter`, and emoji.
 - Common sizes: social post 1080×1080, story 1080×1920, YouTube thumbnail 1280×720, OG/banner 1200×630, icon 512×512, wallpaper 1920×1080.
+
+## Engine: handwrite (A4 handwriting)
+Write the text to a `.txt`/`.md` file (keep the user's wording and line breaks), then:
+```bash
+node .claude/skills/image-gen/scripts/handwrite.cjs notes.md --out images/notes \
+  [--font caveat|kalam|patrick-hand|indie-flower|homemade-apple|shadows-into-light|gloria-hallelujah|dancing-script|architects-daughter|nanum-pen-script|reenie-beanie|just-another-hand|random] \
+  [--paper ruled|grid|dotted|plain] [--columns 2] [--ink blue|black|red|green|purple|pencil|#hex] \
+  [--header "Name: ...   Date: ..."] [--title "..."] [--line 34] [--size 1.1] [--jitter 1] [--seed 7] [--pdf] [--scale 2] [--texture] [--katex <node_modules dir>]
+node .claude/skills/image-gen/scripts/handwrite.cjs --list-fonts      # names of all fonts and inks
+node .claude/skills/image-gen/scripts/handwrite.cjs --sample --out images/font-sample   # every font on one sheet
+```
+- **A4 splitting**: text flows automatically onto as many A4 pages as needed (`notes-1.png`, `notes-2.png`, …; one page → `notes.png`). `--columns 2` splits each A4 sheet into two columns. Long lines wrap and continue in the next column/page mid-paragraph. Force breaks with a line containing only `\newpage` or `\columnbreak`.
+- **Paper**: `ruled` (blue lines + red margin, default), `grid` (squared maths paper), `dotted`, `plain`. Letters sit on the lines; `--line` sets line spacing in px (34 ≈ 9 mm).
+- **Realism**: each word gets a small random tilt, baseline drift, size change and ink-pressure variation; `--jitter 0` is neat, `2` is messy. `--seed` changes the "handwriting take" while staying reproducible.
+- **Several fonts / inks in one document**: put `@font kalam`, `@ink red` or `@size 1.2` on their own line; they apply to the lines below.
+- **Formatting**: `# Heading` / `## Sub` (underlined), `- bullet`, `1. numbered`, blank line = empty ruled line, `**bold**`, `~~crossed out~~`, `==highlighter==`.
+- **Maths**: `\( … \)` inline and `\[ … \]` display are typeset with KaTeX when `--katex <dir containing katex>` is given (or KaTeX is installed); otherwise they are written as plain text. KaTeX is printed math in ink colour, not handwriting, so for a fully handwritten look write simple maths as text (`x² + 2x = 1`, `½`, `√2`).
+- `--texture` adds a subtle paper grain (looks more like a photo of paper, but PNGs get ~4× larger).
+- `--pdf` also writes a real multi-page A4 PDF (`notes.pdf`), ready to print. `--scale 2` (default) gives ~190 dpi PNGs; use `--scale 3` for print-quality images.
+- Header (every page) and title (first page) sit above the first line; page numbers `1 / 3` are added bottom-right (`--no-numbers` to hide).
 
 ## Combine (AI photo + exact text)
 Generate the photo with free-ai, then make an HTML/SVG that uses it as a background `<image href="fox.jpg">` (relative path next to the HTML/SVG file) and overlay the text, and render with `render.cjs`.
