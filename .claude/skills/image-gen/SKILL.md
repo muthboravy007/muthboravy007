@@ -1,20 +1,22 @@
 ---
 name: image-gen
-description: Create or generate images for free, with no API key or credits needed. Also writes text as realistic handwriting on A4 paper (ruled, grid, dotted or plain) in 12 handwriting fonts, splitting long text across A4 pages and columns, saved as PNG pages and PDF. Use when the user asks to create, draw, generate, render or design an image, picture, photo, illustration, logo, icon, poster, banner, thumbnail, social post, sticker, wallpaper, mockup or diagram-style graphic, or to edit/restyle one. Use it for handwritten notes, handwriting copies, worksheets or homework pages too. Uses a free AI image service (Pollinations/Flux) when reachable and otherwise draws the image offline as SVG/HTML rendered to PNG with local Chromium. Optional OpenAI GPT Image engine only if the user has OPENAI_API_KEY.
+description: Create or generate images for free, with no API key or credits needed. Also builds math/science infographic posters (titled card layouts with LaTeX formulas, shaded 3D surfaces, vector fields, graphs, neural-network diagrams) like textbook explainer sheets. Also writes text as realistic handwriting on A4 paper (ruled, grid, dotted or plain) in 12 handwriting fonts, splitting long text across A4 pages and columns, saved as PNG pages and PDF. Use when the user asks to create, draw, generate, render or design an image, picture, photo, illustration, logo, icon, poster, banner, thumbnail, social post, sticker, wallpaper, mockup or diagram-style graphic, or to edit/restyle one. Use it for handwritten notes, handwriting copies, worksheets or homework pages too. Uses a free AI image service (Pollinations/Flux) when reachable and otherwise draws the image offline as SVG/HTML rendered to PNG with local Chromium. Optional OpenAI GPT Image engine only if the user has OPENAI_API_KEY.
 ---
 
 # Free image generation
 
-Four engines, all driven from `scripts/`. Run commands from the repo root (paths below are relative to it).
+Five engines, all driven from `scripts/`. Run commands from the repo root (paths below are relative to it).
 
 | Engine | Cost | Needs | Best for |
 |---|---|---|---|
 | **free-ai** (`free_ai.py`) | Free, no key | Network access to `image.pollinations.ai` | Photos, realistic scenes, painterly art, characters, landscapes |
 | **draw** (`render.cjs`) | Free, offline | Local Chromium + Playwright (preinstalled in Claude Code cloud) | Logos, icons, posters, banners, thumbnails, infographics, anything with exact text, flat/vector/geometric art |
+| **infographic** (`infographic.cjs`) | Free, offline | Local Chromium + Playwright; KaTeX and fonts bundled | Explainer posters: title + cards with formulas, 3D surfaces, fields, plots, icons (math/physics/ML topics) |
 | **handwrite** (`handwrite.cjs`) | Free, offline | Local Chromium + Playwright; fonts are bundled in `fonts/` | Handwritten copies of text/notes on A4 paper, split over pages and columns, PNG + PDF |
 | **openai** (`openai_image.py`) | Paid | `OPENAI_API_KEY` | Only when the user has credits and asks for it |
 
 ## Choosing the engine
+0a. Concept poster / "infographic like this" / explainer sheet with formulas and 3D diagrams → **infographic**.
 0. Handwritten copy / notes / homework page / "write this by hand" → **handwrite** (A4, splits into pages and columns).
 1. Exact text, logos, icons, UI, charts, flat/vector/minimal styles → **draw** (AI models misspell text; drawing is precise).
 2. Photorealistic or painterly subjects → **free-ai**. If it exits with code 3 (service unreachable/blocked), tell the user in one line and switch to **draw**, producing the best illustrated version you can (layered gradients, shapes, filters).
@@ -49,6 +51,30 @@ Drawing guidance, so results look designed rather than clip-art:
 - Text: use system font stacks (`Inter, Helvetica, Arial, sans-serif`, `Georgia, serif`) or embed a Google Font in HTML only when network allows. Keep headline text large, high contrast, and inside safe margins.
 - HTML mode is handy for posters/social cards with CSS layout (flex/grid), CSS gradients, `backdrop-filter`, and emoji.
 - Common sizes: social post 1080×1080, story 1080×1920, YouTube thumbnail 1280×720, OG/banner 1200×630, icon 512×512, wallpaper 1920×1080.
+
+## Engine: infographic (explainer posters)
+Write a spec file (CommonJS) and render it:
+```bash
+node .claude/skills/image-gen/scripts/infographic.cjs my-poster.cjs images/my-poster.png [--scale 1.5] [--html debug.html]
+```
+Start by copying the closest example in `examples/` (each renders in about 1 s):
+| Example | Theme | Shows |
+|---|---|---|
+| `gradient-divergence-curl.cjs` | `classic`, bar headers | 3D bump with gradient arrow, radial source, curl rings, contour plot, lit cube, tube (blood vessel) |
+| `types-of-integrals.cjs` | `paper` (graph paper, serif title) | area under curve, surface over region, blob in box, line integral in a field, flux arrows, measure bars, icon strip |
+| `coordinate-systems.cjs` | `classic`, tinted headers | Cartesian box, cylinder, wire sphere with θ/φ arcs, aligned conversion formulas, cube/cylinder/sphere icons |
+| `math-behind-ai.cjs` | `sketch` (marker font, pastel pills) | jet-coloured loss surface with gradient-descent path, neural nets, neuron flow, ReLU/sigmoid plots |
+
+**Spec shape** (`module.exports = ({ fig2d, fig3d, tex }) => ({ ... })`):
+- Page: `theme` (`classic` | `paper` | `sketch` | custom object), `title`, `subtitle`, `header` (default card header: `bar` | `tint` | `plain` | `pill` | `none`), `width` (1600), `height` (`'a4'` or px to force a page size), `footer` (default `'Muth Boravy'`, `false` to hide), `footerStyle` (`line` | `script`), sizes `titleSize subtitleSize cardTitleSize textSize formulaSize`, extra `css`, `logo` (SVG/HTML).
+- `rows: [{ cols: [1, 1, 1], gap, heading?, cards: [card…] }]`. Card: `{ title, sub, tone, header, titleSize, bg, flat, body: [block…] }`. Tones per theme: classic `coral teal gold slate plum ink`; paper `rust green crimson slate orange indigo sand`; sketch `pink blue yellow green lavender peach sky`.
+- Blocks: `{p}` text (inline math `\( \)`), `{h}` small heading, `{tex, box?, bg?, size?}` display formula (auto-shrinks to fit), `{fig, caption?}` any SVG, `{cols:[[blocks],[blocks]], widths}`, `{list}`, `{legend:[[sym, meaning]]}`, `{note}`, `{space}`, `{divider}`, or a raw HTML string.
+
+**Figures** (all return SVG strings; labels are LaTeX):
+- `fig3d.Scene({width,height,scale,azimuth,elevation,center})`: `.graph(f,{x,y,cmap})`, `.surface(S(u,v),{u,v,cmap|color,grid,opacity,colorBy})` (lit + depth-sorted), `.polygon`, `.curve(points,{dash,dashBack})`, `.circle`, `.arrow(p,q,{color,label})`, `.axes({x,y,z,labels})`, `.point`, `.label(p,tex)`, `.box`, `.cylinder`, `.wireSphere`, `.arc(center,from,to,r,{fill,arrow})`, `.svg()`. Helpers `revolve(profile)` (pots, vases), `tube(curve, radius)` (handles, vessels, wires). Colour maps `warm coral teal mint rdbu jet pink sand slate` or `ramp([...hex])`.
+- `fig2d`: `plot({fns,fills,rects,vlines,hlines,points,ticks})`, `field({F})`, `radial({inward})` (source/sink), `swirl()` (rotation), `contours({f,levels})`, `nnet({layers,inputs,outputs,gapAfter})`, `ball`, `cube`, `cylinderIcon`, `icon('segment'|'area'|'volume'|'surface'|'curve')`, `arrow(x1,y1,x2,y2)`, `wrap(w,h,svgBody)`.
+
+Workflow: build the spec, render at `--scale 1`, look at it, fix overlaps (move labels with `dx/dy`, change `azimuth/elevation`, adjust `cols` widths), then render the final at `--scale 1.5`–`2`. Do not copy watermarks/brand names from reference images; the footer carries the user's name.
 
 ## Engine: handwrite (A4 handwriting)
 Write the text to a `.txt`/`.md` file (keep the user's wording and line breaks), then:
