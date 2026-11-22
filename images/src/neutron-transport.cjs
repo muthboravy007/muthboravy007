@@ -118,7 +118,8 @@ module.exports = ({ fig2d: F, fig3d: { Scene, ramp, vec } }) => {
     theme: 'classic', header: 'bar', title: 'Numerical Methods for 3D Neutron Transport', titleSize: 64,
     subtitle: 'How reactor physicists solve the Boltzmann transport equation for the neutron population in a 3D core: what is discretised, which methods exist, and what each one computes.', subtitleSize: 29,
     cardTitleSize: 36, cardSubSize: 23, textSize: 24, formulaSize: 28,
-    rows: [
+    pages: [
+    { textSize: 27, cardTitleSize: 40, cardSubSize: 25, formulaSize: 31, rowGap: 40, rows: [
       { cols: [1.55, 1], gap: 24, cards: [
         { title: 'The equation (steady state, eigenvalue form)', tone: 'ink', header: 'plain', body: [
           { tex: String.raw`\underbrace{\boldsymbol\Omega\cdot\nabla\psi}_{\text{streaming}}+\underbrace{\Sigma_t\,\psi}_{\text{collisions}}=\underbrace{\int_0^\infty\!\!\int_{4\pi}\Sigma_s(E'\!\to\!E,\boldsymbol\Omega'\!\cdot\!\boldsymbol\Omega)\,\psi'\,d\Omega'dE'}_{\text{scattering in}}+\underbrace{\frac{\chi(E)}{4\pi k_{\text{eff}}}\int_0^\infty\!\nu\Sigma_f\,\phi'\,dE'}_{\text{fission}}`, bg: '#efebe5', size: 27 },
@@ -130,7 +131,7 @@ module.exports = ({ fig2d: F, fig3d: { Scene, ramp, vec } }) => {
           { p: 'Each neutron has a position (3), a direction (2) and an energy (1): too many variables to solve directly, so <b>every</b> variable is discretised.', small: true },
         ] },
       ] },
-      { heading: '1 · Discretise each variable', cols: [1, 1, 1, 1], gap: 20, cards: [
+      { heading: 'Discretise each variable', cols: [1, 1, 1, 1], gap: 20, cards: [
         { title: 'Energy', sub: 'multigroup', tone: 'gold', body: [
           { tex: String.raw`\psi_g=\int_{E_g}^{E_{g-1}}\psi\,dE,\quad g=1\dots G`, bg: '#fbf1dc', size: 24 },
           { p: 'Cross sections are flux-weighted into \\(G\\) groups (NJOY), with resonance self-shielding. Lattice codes use 50–300+ groups; core codes 2–8.', small: true } ] },
@@ -143,7 +144,12 @@ module.exports = ({ fig2d: F, fig3d: { Scene, ramp, vec } }) => {
           { tex: String.raw`\frac{1}{v}\frac{\partial\psi}{\partial t}+\dots+\sum_i\lambda_iC_i`, bg: '#e6eef2', size: 24 },
           { p: 'Implicit Euler / θ-method, <b>point kinetics</b> or <b>quasi-static</b> (shape × amplitude) with delayed-neutron precursors \\(C_i\\).', small: true } ] },
       ] },
-      { heading: '2 · Deterministic transport solvers', cols: [1, 1, 1], gap: 22, cards: [
+      { cols: [1], cards: [
+        { title: 'The multi-level calculation chain', tone: 'slate', header: 'plain', body: [flowHtml] },
+      ] },
+    ] },
+    { title: 'Deterministic & Stochastic Solvers', titleSize: 60, subtitle: 'Six ways to turn the transport equation into numbers, and what each one computes.', subtitleSize: 28, rows: [
+      { heading: 'Deterministic solvers', cols: [1, 1, 1], gap: 22, cards: [
         method('Discrete ordinates (\\(S_N\\))', 'teal', 'sweep each direction across the mesh', 'For each direction \\(m\\) the equation is a first-order PDE solved by a <b>sweep</b> from the incoming boundary, cell by cell (diamond difference \\(\\psi_c=\\tfrac12(\\psi_{in}+\\psi_{out})\\)). Watch for ray effects.',
           [String.raw`\boldsymbol\Omega_m\!\cdot\!\nabla\psi_m+\Sigma_t\psi_m=q_m,\quad \phi=\sum_m w_m\psi_m`], sweep, 'angular & scalar flux on a mesh; shielding, full-core fixed source and eigenvalue'),
         method('Method of characteristics', 'coral', 'integrate along straight tracks', 'Lay parallel tracks over the exact geometry. Along each segment of length \\(s\\) with flat source \\(q\\) the ODE has a closed-form solution; segment averages build \\(\\phi\\) in every region.',
@@ -168,7 +174,9 @@ module.exports = ({ fig2d: F, fig3d: { Scene, ramp, vec } }) => {
           { p: 'Simulate individual neutron histories: sample flight distance, collision type, new direction and energy; tally track lengths. Continuous energy and exact geometry.', small: true },
           { note: '<b>Solves for:</b> reference \\(k_{\\text{eff}}\\) and tallies with error bars; deep-penetration shielding with CADIS weight windows', tone: 'coral' } ] },
       ] },
-      { heading: '3 · Iterations and acceleration', cols: [1.05, 1, 1], gap: 22, cards: [
+    ] },
+    { textSize: 26, rowGap: 36, title: 'Iterations, Acceleration & Comparison', titleSize: 60, subtitle: 'How the discrete equations are solved, made fast, and which method to choose.', subtitleSize: 28, rows: [
+      { cols: [1.05, 1, 1], gap: 22, cards: [
         { title: 'Nested iterations', tone: 'ink', body: [loop,
           { tex: String.raw`\phi^{(n+1)}=\frac{1}{k^{(n)}}\mathbf M^{-1}\mathbf F\phi^{(n)},\qquad k^{(n+1)}=k^{(n)}\frac{\langle\mathbf F\phi^{(n+1)}\rangle}{\langle\mathbf F\phi^{(n)}\rangle}`, bg: '#efebe5', size: 25 } ] },
         { title: 'Why acceleration?', tone: 'teal', body: [
@@ -178,12 +186,33 @@ module.exports = ({ fig2d: F, fig3d: { Scene, ramp, vec } }) => {
           { legend: [['DSA', 'diffusion synthetic acceleration of the scattering source'], ['CMFD', 'coarse-mesh diffusion solve that rebalances the flux and \\(k\\)'], ['Krylov', 'GMRES / Bi-CGSTAB on the within-group system'], ['Wielandt', 'shifted power iteration, faster \\(k\\) convergence'], ['Parallel', 'KBA sweeps, domain decomposition, GPUs']] } ] },
       ] },
       { cols: [1], cards: [
-        { title: 'The multi-level calculation chain', tone: 'slate', header: 'plain', body: [flowHtml] },
-      ] },
-      { cols: [1], cards: [
         { title: 'Comparing the methods', tone: 'coral', header: 'plain', body: [table,
           { p: 'In practice: lattice MOC/CP + 3D nodal diffusion for design; whole-core MOC, \\(S_N\\) or Monte Carlo for high-fidelity and validation.', small: true }] },
       ] },
+      { cols: [1, 1], gap: 24, cards: [
+        { title: 'Sources of numerical error', tone: 'plum', body: [
+          { legend: [
+            ['Energy', 'multigroup collapse and resonance self-shielding approximations'],
+            ['Angle', '\\(S_N\\) ray effects; \\(P_N\\) truncation; diffusion fails near voids, boundaries and strong absorbers'],
+            ['Space', 'mesh size, flat-source assumption (MOC), homogenisation of assemblies'],
+            ['Iteration', 'stopping tolerances on \\(k\\) and \\(\\phi\\); unconverged fission source'],
+            ['Statistics', 'Monte Carlo variance \\(\\sigma\\propto1/\\sqrt N\\); source-convergence bias'],
+          ] },
+          { note: '<b>Check:</b> refine meshes, quadrature and groups until results stop changing, then compare with Monte Carlo and measured benchmarks.', tone: 'plum' },
+        ] },
+        { title: 'Example codes', tone: 'slate', body: [
+          { legend: [
+            ['Monte Carlo', 'MCNP, OpenMC, Serpent'],
+            ['\\(S_N\\)', 'PARTISN, Denovo'],
+            ['MOC', 'OpenMOC, MPACT, CASMO (lattice)'],
+            ['Collision prob.', 'DRAGON, WIMS (lattice)'],
+            ['Nodal diffusion', 'PARCS, SIMULATE'],
+            ['Data processing', 'NJOY (ENDF to multigroup / ACE)'],
+          ] },
+          { p: 'Design work chains a lattice code to a nodal core code; high-fidelity work runs MOC, \\(S_N\\) or Monte Carlo on the whole core.', small: true },
+        ] },
+      ] },
+    ] },
     ],
     css: `.rowhead{text-align:left;margin-bottom:-12px}.rowhead span{font-family:'Inter Display',Inter,sans-serif;font-size:40px;font-weight:800;color:#1d1a17;padding:0}
 .legend td{font-size:21px}.legend td.k{font-weight:700;color:#1d1a17}

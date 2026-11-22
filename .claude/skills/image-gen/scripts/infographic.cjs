@@ -16,10 +16,11 @@ if (require.main === module) {
   const argv = process.argv.slice(2);
   const opt = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
   const pos = argv.filter((a, i) => !a.startsWith('--') && !(argv[i - 1] || '').startsWith('--'));
-  if (pos.length < 2) { console.error('usage: node infographic.cjs <spec.cjs> <out.png> [--scale 1.5] [--html out.html]'); process.exit(2); }
+  if (pos.length < 2) { console.error('usage: node infographic.cjs <spec.cjs> <out.png> [--scale 1.5] [--html out.html] [--pdf out.pdf]'); process.exit(2); }
   let spec = require(path.resolve(pos[0]));
   if (typeof spec === 'function') spec = spec(lib);
-  lib.render(spec, pos[1], { scale: Number(opt('scale', 1.5)), html: opt('html', null) })
-    .then(({ width, height }) => console.log(`${pos[1]}  (${width}×${height} css px, scale ${opt('scale', 1.5)})`))
+  const o = { scale: Number(opt('scale', 1.5)), html: opt('html', null), pdf: opt('pdf', null) };
+  (spec.pages ? lib.renderPages(spec, pos[1], o).then(fs => { fs.forEach(f => console.log(`${f.file}  (${f.width}×${f.height} css px)`)); if (o.pdf) console.log(o.pdf); })
+    : lib.render(spec, pos[1], o).then(({ width, height }) => console.log(`${pos[1]}  (${width}×${height} css px, scale ${o.scale})`)))
     .catch(e => { console.error('error:', e.message); process.exit(1); });
 }

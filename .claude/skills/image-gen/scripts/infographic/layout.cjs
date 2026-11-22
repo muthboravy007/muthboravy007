@@ -73,7 +73,7 @@ function card(c, ctx) {
 function build(spec) {
   const theme = typeof spec.theme === 'object' ? spec.theme : THEMES[spec.theme || 'classic'];
   if (!theme) throw new Error('unknown theme ' + spec.theme);
-  const W = spec.width || 1600, ctx = { theme, defaultHeader: spec.header || (spec.theme === 'sketch' ? 'pill' : spec.theme === 'paper' ? 'bar' : 'plain'), formulaSize: spec.formulaSize || 30, tone: null };
+  const W = spec.width || 1600, pageH = spec.height === 'a4' ? Math.round((spec.width || 1600) * Math.SQRT2) : typeof spec.height === 'number' ? spec.height : 0, ctx = { theme, defaultHeader: spec.header || (spec.theme === 'sketch' ? 'pill' : spec.theme === 'paper' ? 'bar' : 'plain'), formulaSize: spec.formulaSize || 30, tone: null };
   const rows = (spec.rows || []).map(r => {
     const cols = r.cols || r.cards.map(() => 1);
     const heading = r.heading ? `<div class="rowhead${theme.handTitle ? ' hand' : ''}"><span style="${r.headingBg ? `background:${r.headingBg}` : ''}">${r.heading}</span></div>` : '';
@@ -87,7 +87,9 @@ ${fontFace('Patrick Hand', 'patrick-hand.woff2')}${fontFace('Architects Daughter
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:${W}px;background:${theme.bg};color:${theme.ink};font-family:${theme.body}}
 body{${theme.page}}
-.wrap{padding:${spec.padding ?? '50px 50px 34px'}}
+.wrap{padding:${spec.padding ?? '50px 50px 34px'};position:relative${pageH ? `;min-height:${pageH}px;display:flex;flex-direction:column` : ''}}
+${pageH ? '.footer{margin-top:auto!important;padding-top:24px}' : ''}
+.pagelabel{position:absolute;right:50px;top:24px;font-size:22px;font-weight:600;color:${theme.muted};letter-spacing:.5px}
 .logo{position:absolute;left:24px;top:20px}
 h1{font-family:${theme.title};font-weight:${theme.titleWeight};font-size:${spec.titleSize || theme.titleSize}px;letter-spacing:${theme.titleSpacing};text-align:center;line-height:1.02}
 ${theme.handTitle ? `h1 span{background:linear-gradient(transparent 18%,#fbe98a 18%,#fbe98a 88%,transparent 88%);padding:0 28px;border-radius:30px;-webkit-text-stroke:2px ${theme.ink}}` : ''}
@@ -132,7 +134,7 @@ figcaption{font-size:${(spec.textSize || 29) - 6}px;color:${theme.muted};margin-
 .footer.script{font-family:'Caveat',cursive;font-weight:400;font-size:48px;color:#6b645c;letter-spacing:2px}
 ${spec.css || ''}
 </style></head><body><div class="wrap">
-${spec.logo ? `<div class="logo">${spec.logo}</div>` : ''}
+${spec.logo ? `<div class="logo">${spec.logo}</div>` : ''}${spec.pageLabel ? `<div class="pagelabel">${spec.pageLabel}</div>` : ''}
 ${spec.title ? `<h1><span>${spec.title}</span></h1>` : ''}
 ${spec.subtitle ? `<div class="sub">${spec.subtitle}</div>` : ''}
 ${rows}
@@ -175,4 +177,27 @@ async function render(spec, out, { scale = 1.5, html = null } = {}) {
   return { width: W, height: H };
 }
 
-module.exports = { build, render, THEMES };
+// Multi-page document: spec.pages = [pageSpec, …]; shared fields (theme, sizes, css, footer…) come from the parent.
+// Writes <base>-1.png, <base>-2.png, … and, if pdf is set, one A4 PDF with every page.
+async function renderPages(spec, out, { scale = 1.5, html = null, pdf = null } = {}) {
+  const { pages, ...base } = spec, n = pages.length, files = [];
+  const stem = out.replace(/\.png$/i, '');
+  for (let i = 0; i < n; i++) {
+    const page = { height: 'a4', ...base, ...pages[i], css: (base.css || '') + (pages[i].css || '') };
+    if (page.pageLabel === undefined && base.pageLabels !== false) page.pageLabel = `Page ${i + 1} / ${n}`;
+    const f = `${stem}-${i + 1}.png`;
+    const r = await render(page, f, { scale, html: html ? html.replace(/\.html$/, `-${i + 1}.html`) : null });
+    files.push({ file: f, ...r });
+  }
+  if (pdf) {
+    const { chromium } = require('playwright');
+    const browser = await chromium.launch(), pg = await browser.newPage();
+    const imgs = files.map(f => `<div class="p"><img src="data:image/png;base64,${fs.readFileSync(f.file).toString('base64')}"></div>`).join('');
+    await pg.setContent(`<!doctype html><style>@page{size:A4;margin:0}*{margin:0;padding:0}.p{width:210mm;height:297mm;break-after:page;overflow:hidden}.p img{width:210mm;height:auto;display:block}</style>${imgs}`, { waitUntil: 'load' });
+    await pg.pdf({ path: pdf, format: 'A4', printBackground: true, preferCSSPageSize: true });
+    await browser.close();
+  }
+  return files;
+}
+
+module.exports = { build, render, renderPages, THEMES };
